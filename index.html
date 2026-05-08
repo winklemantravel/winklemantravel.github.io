@@ -1,0 +1,1367 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Winkleman Travel — The Plates</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,400;0,9..144,500;0,9..144,600;0,9..144,700;0,9..144,900;1,9..144,400&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="site.css">
+<style>
+  /* ============================================================
+     INDEX.HTML — page-specific styles (The Plates)
+     All shared styles (masthead, page nav, footer, intro section,
+     color system, etc.) live in site.css.
+     ============================================================ */
+
+  /* Reduced-motion overrides for the 3D plate flip. The generic
+     reduced-motion block in site.css handles transitions/animations;
+     this block kills the card flip and replaces it with a simple
+     display swap so users who don't want motion still get the
+     information (front/back) without the 3D rotation. */
+  @media (prefers-reduced-motion: reduce) {
+    .plate { transition: none !important; }
+    .specimen.flipped .plate { transform: none !important; }
+    .plate-face { backface-visibility: visible !important; }
+    .plate-face.back { display: none; }
+    .specimen.flipped .plate-face.front { display: none; }
+    .specimen.flipped .plate-face.back { display: flex; transform: none !important; }
+  }
+
+  /* ========== FILTER BAR ========== */
+  .filter-bar {
+    border-top: 1px solid var(--ink);
+    border-bottom: 1px solid var(--ink);
+    background: var(--paper-pure);
+    position: sticky;
+    top: 0;
+    z-index: 20;
+  }
+
+  .filter-inner {
+    display: flex;
+    align-items: stretch;
+    justify-content: space-between;
+    gap: 0;
+    padding: 0 40px;
+  }
+
+  .filter-group {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 18px 0;
+  }
+
+  .filter-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--ink-soft);
+  }
+
+  .filter-chips { display: flex; gap: 6px; flex-wrap: wrap; }
+
+  .chip {
+    background: transparent;
+    border: 1px solid var(--rule);
+    color: var(--ink);
+    padding: 6px 12px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10.5px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    border-radius: 2px;
+  }
+  .chip:hover { border-color: var(--ink); background: var(--paper); }
+  .chip.active {
+    background: var(--ink);
+    color: var(--paper);
+    border-color: var(--ink);
+  }
+  .chip.active.gold {
+    background: var(--gold);
+    color: var(--ink);
+    border-color: var(--gold);
+  }
+
+  .count-display {
+    font-family: 'Fraunces', serif;
+    font-style: italic;
+    font-size: 13px;
+    color: var(--ink-soft);
+    padding: 18px 0;
+    display: flex;
+    align-items: center;
+  }
+  .count-display strong {
+    font-weight: 600;
+    font-style: normal;
+    color: var(--ink);
+    margin: 0 4px;
+  }
+
+  /* ========== SEARCH ==========
+     A small inline search input, sized to feel like part of the filter bar
+     rather than a separate UI feature. Borderless until focused, then a
+     gold underline lights up. The magnifier and clear button are inline
+     so the input stays a single visual unit. */
+  .search-group {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 18px 0;
+    /* Push search to the middle-ish of the bar */
+    flex: 0 1 auto;
+  }
+  .search-input-wrap {
+    position: relative;
+    display: flex;
+    align-items: center;
+    border-bottom: 1px solid var(--rule);
+    transition: border-color 0.15s ease;
+    /* The wrap, not the input, owns the underline so the magnifier sits "inside" it */
+  }
+  .search-input-wrap:focus-within {
+    border-bottom-color: var(--gold-deep);
+  }
+  .search-icon {
+    color: var(--ink-soft);
+    width: 14px;
+    height: 14px;
+    margin-right: 8px;
+    flex-shrink: 0;
+  }
+  .search-input {
+    background: transparent;
+    border: none;
+    outline: none;
+    font-family: 'Fraunces', serif;
+    font-size: 14px;
+    font-weight: 400;
+    color: var(--ink);
+    padding: 4px 24px 4px 0;
+    width: 180px;
+    transition: width 0.2s ease;
+  }
+  .search-input::placeholder {
+    color: var(--ink-soft);
+    font-style: italic;
+    opacity: 0.7;
+  }
+  .search-input:focus {
+    width: 240px;
+  }
+  /* Clear-search button — shown only when input has text */
+  .search-clear {
+    position: absolute;
+    right: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 18px;
+    height: 18px;
+    border: none;
+    background: var(--rule-strong);
+    color: var(--paper);
+    border-radius: 50%;
+    cursor: pointer;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    line-height: 1;
+    padding: 0;
+    transition: background 0.15s ease;
+  }
+  .search-clear:hover { background: var(--ink); }
+  .search-clear.visible { display: flex; }
+
+  /* No-results message inside the grid when search/filter returns nothing */
+  .grid-empty {
+    grid-column: 1 / -1;
+    padding: 80px 40px;
+    text-align: center;
+    color: var(--ink-soft);
+    font-family: 'Fraunces', serif;
+    font-style: italic;
+    font-size: 18px;
+    line-height: 1.6;
+  }
+  .grid-empty strong {
+    font-weight: 500;
+    font-style: normal;
+    color: var(--ink);
+  }
+  .grid-empty .reset-search {
+    margin-top: 16px;
+    background: transparent;
+    border: 1px solid var(--rule-strong);
+    color: var(--ink);
+    padding: 8px 18px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10.5px;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    cursor: pointer;
+    border-radius: 2px;
+    transition: all 0.15s ease;
+  }
+  .grid-empty .reset-search:hover {
+    background: var(--ink);
+    color: var(--paper);
+    border-color: var(--ink);
+  }
+
+  /* ========== CATALOG GRID ========== */
+  .catalog {
+    padding: 56px 40px 120px;
+    position: relative;
+    z-index: 2;
+  }
+
+  .catalog-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    margin-bottom: 40px;
+    padding-bottom: 18px;
+    border-bottom: 1px solid var(--ink);
+  }
+
+  .catalog-title {
+    font-family: 'Fraunces', serif;
+    font-weight: 300;
+    font-size: 42px;
+    letter-spacing: -0.01em;
+    font-variation-settings: "opsz" 144;
+  }
+  .catalog-title em {
+    font-style: italic;
+    color: var(--gold-deep);
+  }
+
+  .catalog-meta {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--ink-soft);
+    text-align: right;
+    line-height: 1.7;
+  }
+
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 80px 48px;
+  }
+
+  /* Specimen card — sits on the page with no chrome */
+  .specimen { position: relative; perspective: 1800px; }
+
+  .plate {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 5 / 3;
+    transform-style: preserve-3d;
+    transition: transform 0.7s cubic-bezier(0.4, 0, 0.2, 1);
+    cursor: pointer;
+    margin-top: 14px;
+    background: transparent;
+    border: none;
+    padding: 0;
+    font: inherit;
+    color: inherit;
+    display: block;
+  }
+  .plate:focus { outline: none; }
+  .plate:focus-visible {
+    outline: 2px solid var(--ink);
+    outline-offset: 8px;
+    border-radius: 2px;
+  }
+
+  .specimen.flipped .plate { transform: rotateY(180deg); }
+
+  .plate-face {
+    position: absolute;
+    inset: 0;
+    backface-visibility: hidden;
+    -webkit-backface-visibility: hidden;
+    background: transparent;
+    border: none;
+    box-shadow: none;
+    overflow: visible;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .plate-face.back { transform: rotateY(180deg); }
+
+  .plate-img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    display: block;
+    /* Soft drop shadow anchors the plate to the page without a literal box.
+       Uses new ink color #1b1464 → rgba(27, 20, 100, …). */
+    filter: drop-shadow(0 8px 16px rgba(27, 20, 100, 0.12))
+            drop-shadow(0 2px 4px rgba(27, 20, 100, 0.08));
+  }
+
+  .no-back {
+    color: var(--ink-soft);
+    font-family: 'Fraunces', serif;
+    font-style: italic;
+    font-size: 14px;
+    text-align: center;
+    opacity: 0.5;
+  }
+
+  .caption {
+    margin-top: 22px;
+    padding-top: 16px;
+    border-top: 1px solid var(--rule);
+  }
+
+  .caption-name {
+    font-family: 'Fraunces', serif;
+    font-weight: 500;
+    font-size: 22px;
+    letter-spacing: -0.008em;
+    margin-bottom: 6px;
+    color: var(--ink);
+  }
+
+  .caption-years {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--gold-deep);
+    font-weight: 500;
+  }
+
+  .flip-hint {
+    margin-top: 8px;
+    font-family: 'Fraunces', serif;
+    font-style: italic;
+    font-size: 11.5px;
+    color: var(--ink-soft);
+    opacity: 0;
+    transition: opacity 0.25s ease;
+  }
+  .specimen:hover .flip-hint { opacity: 0.7; }
+  .flip-hint::before {
+    content: '↻ ';
+    font-style: normal;
+    color: var(--gold-deep);
+  }
+
+  /* ========== ZOOM BUTTON ========== */
+  .zoom-btn {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    width: 36px;
+    height: 36px;
+    background: var(--paper-pure);
+    border: 1px solid var(--rule-strong);
+    border-radius: 50%;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    transition: opacity 0.2s ease, transform 0.2s ease, background 0.2s ease;
+    z-index: 3;
+    padding: 0;
+    color: var(--ink);
+  }
+  .zoom-btn:hover {
+    background: var(--ink);
+    color: var(--paper);
+    transform: scale(1.08);
+  }
+  .zoom-btn svg { display: block; }
+  .specimen:hover .zoom-btn { opacity: 1; }
+  @media (hover: none) { .zoom-btn { opacity: 1; } }
+
+  /* ========== ZOOM MODAL ========== */
+  .zoom-modal {
+    position: fixed;
+    inset: 0;
+    background: rgba(27, 20, 100, 0.92);
+    z-index: 1000;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 40px;
+    cursor: zoom-out;
+  }
+  .zoom-modal.open { display: flex; }
+
+  .zoom-stage {
+    position: relative;
+    max-width: 100%;
+    max-height: 100%;
+    overflow: hidden;
+    cursor: grab;
+    user-select: none;
+    -webkit-user-select: none;
+  }
+  .zoom-stage.dragging { cursor: grabbing; }
+
+  .zoom-img {
+    display: block;
+    max-width: 100%;
+    max-height: 90vh;
+    transform-origin: center center;
+    transition: transform 0.2s ease;
+    user-select: none;
+    -webkit-user-select: none;
+    pointer-events: none;
+  }
+  .zoom-stage.zoomed .zoom-img { transition: none; }
+
+  .zoom-caption {
+    position: absolute;
+    left: 32px;
+    bottom: 28px;
+    color: var(--paper);
+    font-family: 'Fraunces', serif;
+    font-size: 22px;
+    font-weight: 400;
+    letter-spacing: -0.005em;
+    text-shadow: 0 2px 8px rgba(0, 0, 0, 0.6);
+    pointer-events: none;
+  }
+  .zoom-caption .years {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--gold);
+    display: block;
+    margin-top: 4px;
+  }
+
+  .zoom-close {
+    position: absolute;
+    top: 24px;
+    right: 28px;
+    width: 44px;
+    height: 44px;
+    background: transparent;
+    border: 1px solid rgba(246, 242, 233, 0.3);
+    border-radius: 50%;
+    color: var(--paper);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 20px;
+    line-height: 1;
+    transition: background 0.2s ease, border-color 0.2s ease;
+  }
+  .zoom-close:hover {
+    background: rgba(246, 242, 233, 0.1);
+    border-color: var(--paper);
+  }
+
+  .zoom-hint {
+    position: absolute;
+    top: 28px;
+    left: 32px;
+    color: rgba(246, 242, 233, 0.7);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    pointer-events: none;
+  }
+
+  .zoom-side-switch {
+    position: absolute;
+    bottom: 28px;
+    right: 32px;
+    display: flex;
+    gap: 0;
+    border: 1px solid rgba(246, 242, 233, 0.3);
+    border-radius: 2px;
+    overflow: hidden;
+  }
+  .zoom-side-switch button {
+    background: transparent;
+    color: rgba(246, 242, 233, 0.7);
+    border: none;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    padding: 10px 16px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+  }
+  .zoom-side-switch button:first-child {
+    border-right: 1px solid rgba(246, 242, 233, 0.3);
+  }
+  .zoom-side-switch button.active {
+    background: var(--gold);
+    color: var(--ink);
+  }
+
+  .zoom-close:focus-visible,
+  .zoom-side-switch button:focus-visible {
+    outline: 2px solid var(--gold);
+    outline-offset: 3px;
+  }
+  .zoom-stage:focus-visible {
+    outline: 2px solid var(--gold);
+    outline-offset: 4px;
+  }
+
+  body.modal-open { overflow: hidden; }
+
+  /* ========== Responsive — page-specific ========== */
+  @media (max-width: 1100px) {
+    .grid { grid-template-columns: repeat(2, 1fr); gap: 64px 40px; }
+  }
+  @media (max-width: 780px) {
+    .filter-inner { flex-direction: column; gap: 0; padding: 0 20px; }
+    .filter-group { padding: 12px 0; border-bottom: 1px solid var(--rule); }
+    .filter-group:last-child { border-bottom: none; }
+    .search-group {
+      width: 100%;
+      padding: 12px 0;
+      border-bottom: 1px solid var(--rule);
+    }
+    .search-input-wrap { flex: 1; }
+    .search-input { width: 100%; }
+    .search-input:focus { width: 100%; }
+    .catalog { padding: 32px 20px 80px; }
+    .catalog-header { flex-direction: column; align-items: flex-start; gap: 14px; }
+    .catalog-title { font-size: 30px; }
+    .grid { grid-template-columns: 1fr; gap: 56px; }
+  }
+</style>
+</head>
+<body>
+
+<a class="skip-link" href="#main-content">Skip to content</a>
+
+<header class="masthead">
+  <div class="masthead-top">
+    <span>◎ &nbsp;Winkleman Travel</span>
+    <span>In memory of Joseph Winkleman</span>
+    <span>A life's work, remembered</span>
+  </div>
+  <div class="masthead-main">
+    <div class="masthead-flank left">
+ 
+    </div>
+    <div class="logo-block">
+      <img src="images/winkleman-travel.svg" alt="Winkleman Travel logo" class="logo" width="80px" />
+      <h1 class="wordmark">Winkleman Travel</h1>
+      <div class="subtitle">The Plates</div>
+    </div>
+    <div class="masthead-flank right">
+    
+    </div>
+  </div>
+</header>
+
+<nav class="page-nav" aria-label="Site sections">
+  <div class="page-nav-inner">
+    <a href="index.html" class="current">The Plates</a>
+    <a href="ads.html">Print Ads</a>
+    <a href="obituary.html">Obituary</a>
+    <a href="memories.html">Share a Memory</a>
+  </div>
+</nav>
+
+<main id="main-content">
+
+<section class="intro-section" aria-labelledby="intro-heading">
+  <div class="intro-inner">
+    <h2 class="intro-kicker" id="intro-heading">— For my father —</h2>
+    <p class="drop-cap">Before the boarding pass, before the e-ticket, there was the <em>validation plate</em> — a small embossed card pressed onto carbon tickets at the agency counter. My father kept a drawer full of them well past their useful life. This collection of logos is a small sample of the visuals I got to encounter at the office.</p>
+  </div>
+</section>
+
+<nav class="filter-bar" aria-label="Filter and search plates">
+  <div class="filter-inner">
+    <div class="filter-group">
+      <span class="filter-label" id="region-label">Region</span>
+      <div class="filter-chips" data-group="region" role="group" aria-labelledby="region-label"></div>
+    </div>
+    <div class="search-group">
+      <label class="filter-label" for="search-input">Search</label>
+      <div class="search-input-wrap">
+        <svg class="search-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true">
+          <circle cx="7" cy="7" r="4.5"/>
+          <line x1="10.2" y1="10.2" x2="13.5" y2="13.5" stroke-linecap="round"/>
+        </svg>
+        <input
+          id="search-input"
+          class="search-input"
+          type="search"
+          placeholder="Airline name…"
+          autocomplete="off"
+          aria-label="Search plates by airline name"
+        />
+        <button
+          type="button"
+          class="search-clear"
+          id="search-clear"
+          aria-label="Clear search"
+          tabindex="-1"
+        >×</button>
+      </div>
+    </div>
+    <div class="count-display" aria-live="polite" aria-atomic="true">
+      Showing <strong id="visible-count">36</strong> of <strong id="total-count">36</strong>
+    </div>
+  </div>
+</nav>
+
+<section class="catalog" aria-labelledby="collection-heading">
+  <div class="catalog-header">
+    <h2 class="catalog-title" id="collection-heading">The <em>Plates</em></h2>
+    <div class="catalog-meta">
+      <span id="count">36</span> plates
+    </div>
+  </div>
+
+  <div class="grid" id="grid"></div>
+</section>
+
+</main>
+
+<footer class="colophon">
+  <div>
+    <div class="colophon-mark">Winkleman Travel</div>
+    <p>My father, Joseph Winkleman, ran Winkleman Travel in Cranston, Rhode Island, for over thirty years. This site is for the things he had that inspired me, and for the people who remember him.</p>
+  </div>
+  <div>
+    <h3>More</h3>
+    <nav class="foot-nav" aria-label="Site sections">
+      <a href="index.html" class="current">The Plates</a>
+      <a href="ads.html">Print Ads</a>
+      <a href="obituary.html">Obituary</a>
+      <a href="memories.html">Share a Memory</a>
+    </nav>
+  </div>
+  <div>
+    <h3>Credits</h3>
+    <div class="mono">
+      Design · Winkitude<br>
+      winkitude.com<br>
+      © MMXXVI<br>
+      In loving memory
+    </div>
+  </div>
+</footer>
+
+<!-- ========== ZOOM MODAL ========== -->
+<div class="zoom-modal" id="zoomModal" role="dialog" aria-modal="true" aria-label="Plate detail view">
+  <div class="zoom-hint" aria-hidden="true">Scroll, pinch, or press + / − to zoom · Drag or arrow keys to pan · Esc to close</div>
+  <button class="zoom-close" id="zoomClose" aria-label="Close">×</button>
+  <div class="zoom-stage" id="zoomStage" tabindex="0" role="img" aria-label="Zoomed plate image. Use arrow keys to pan when zoomed in. Press plus or minus to zoom.">
+    <img class="zoom-img" id="zoomImg" alt="" draggable="false" />
+  </div>
+  <div class="zoom-caption" id="zoomCaption"></div>
+  <div class="zoom-side-switch">
+    <button id="zoomFrontBtn" class="active">Front</button>
+    <button id="zoomBackBtn">Back</button>
+  </div>
+</div>
+
+<script>
+  /* ------------------------------------------------------------------
+   * THE WINKLEMAN TRAVEL PLATE ARCHIVE
+   * ------------------------------------------------------------------
+   * Plate data lives in ./plates.csv — a simple spreadsheet you can edit
+   * in any tool (Excel, Numbers, Google Sheets, a text editor) and save
+   * as CSV. The page fetches it on load and renders the grid sorted by
+   * airline name.
+   *
+   * Expected columns:
+   *    slug        filename stem; images/plates/{slug}.{front_ext} is the front,
+   *                                images/plates/{slug}_back.{back_ext} is the back
+   *    name        airline name as displayed in the caption
+   *    years       e.g. "1945 – 1972" or "1971 – present"
+   *    region      "na", "eu", "sa", "as", "me", "af", "oc", or "misc"
+   *    front_ext   "webp" or "png"
+   *    back_ext    "webp", "png", or blank if no back scanned yet
+   *    notes       optional; ignored by the site, for your own tracking
+   *
+   * IMPORTANT: fetch() doesn't work from file:// URLs. You must serve
+   * this folder via a local web server while developing. Quick options:
+   *    python3 -m http.server       then open http://localhost:8000
+   *    npx serve                    then open the URL it prints
+   * When deployed to winkitude.com the fetch just works.
+   * ---------------------------------------------------------------- */
+
+  const CSV_URL = 'plates.csv';
+  const grid = document.getElementById('grid');
+  const countEl = document.getElementById('count');
+  const visibleCountEl = document.getElementById('visible-count');
+  const totalCountEl = document.getElementById('total-count');
+
+  const REGION_LABELS = {
+    na: 'N. America',
+    eu: 'Europe',
+    sa: 'Latin America',
+    as: 'Asia',
+    me: 'Middle East',
+    af: 'Africa',
+    oc: 'Oceania',
+    misc: 'Misc',
+  };
+
+  function parseCSV(text) {
+    text = text.replace(/\r\n?/g, '\n');
+    const rows = [];
+    let row = [];
+    let field = '';
+    let inQuotes = false;
+
+    for (let i = 0; i < text.length; i++) {
+      const c = text[i];
+      if (inQuotes) {
+        if (c === '"') {
+          if (text[i + 1] === '"') { field += '"'; i++; }
+          else inQuotes = false;
+        } else {
+          field += c;
+        }
+      } else {
+        if (c === '"') inQuotes = true;
+        else if (c === ',') { row.push(field); field = ''; }
+        else if (c === '\n') {
+          row.push(field);
+          rows.push(row);
+          row = []; field = '';
+        } else {
+          field += c;
+        }
+      }
+    }
+    if (field !== '' || row.length) { row.push(field); rows.push(row); }
+
+    const clean = rows.filter(r => {
+      const first = (r[0] || '').trim();
+      return r.length > 0 && !(r.length === 1 && first === '') && !first.startsWith('#');
+    });
+    if (clean.length < 2) return [];
+
+    const headers = clean[0].map(h => h.trim());
+    return clean.slice(1).map(r => {
+      const obj = {};
+      headers.forEach((h, i) => { obj[h] = (r[i] || '').trim(); });
+      return obj;
+    });
+  }
+
+  let allPlates = [];
+  let currentRegion = 'all';
+  let currentSearch = '';
+
+  /* Normalize a string for forgiving search matching: lowercase, drop
+     diacritics, drop everything that isn't a letter or digit. So "Pan Am",
+     "Pan-Am", "PANAM", and "panam" all normalize to "panam" — and a search
+     for "panam" finds "Pan American". This is more forgiving than substring
+     match alone but still fast enough to run on every keystroke. */
+  function normalize(s) {
+    return (s || '')
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')  // strip combining diacritics
+      .replace(/[^a-z0-9]/g, '');
+  }
+
+  /* ------------------------------------------------------------------
+   * LAZY IMAGE LOADER
+   * ------------------------------------------------------------------
+   * With ~117 plates × 2 sides, eagerly loading everything at page open
+   * would push 175MB+ of data on first paint. Two layers of defense:
+   *
+   *   1. The HTML uses data-src instead of src on every image, so the
+   *      browser doesn't queue them. We assign src only when needed.
+   *
+   *   2. An IntersectionObserver watches each FRONT image and assigns
+   *      its src when the card is within ~600px of the viewport. That
+   *      means cards above the fold load immediately, cards a couple
+   *      screens below load as the user scrolls, and cards far down
+   *      never load if the user never reaches them.
+   *
+   *   3. BACK images load just-in-time on first flip (handled inline
+   *      in the click handler), since most users never flip most plates.
+   *
+   * Older browsers without IntersectionObserver get a graceful fallback:
+   * we just assign all srcs at once. They'll still get the native
+   * loading="lazy" attribute as a backup.
+   * ---------------------------------------------------------------- */
+  const imageLoader = ('IntersectionObserver' in window)
+    ? new IntersectionObserver((entries, observer) => {
+        entries.forEach(entry => {
+          if (entry.isIntersecting) {
+            const img = entry.target;
+            if (img._needsLoad && img.dataset.src) {
+              img.src = img.dataset.src;
+              img._needsLoad = false;
+            }
+            observer.unobserve(img);
+          }
+        });
+      }, {
+        // Start loading when image is within ~600px of the viewport.
+        // Tunes the trade-off between "load too eagerly = slow" and
+        // "load too late = visible flash of empty plate".
+        rootMargin: '600px 0px',
+        threshold: 0.01,
+      })
+    : null;
+
+  function setupLazyLoading() {
+    const fronts = document.querySelectorAll('.plate-face.front img[data-src]');
+    if (imageLoader) {
+      fronts.forEach(img => imageLoader.observe(img));
+    } else {
+      // Fallback for very old browsers: load everything.
+      fronts.forEach(img => {
+        if (img._needsLoad && img.dataset.src) {
+          img.src = img.dataset.src;
+          img._needsLoad = false;
+        }
+      });
+    }
+  }
+
+  function renderPlates(plates) {
+    plates.sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }));
+    allPlates = plates;
+    buildRegionChips(plates);
+    buildCards(plates);
+    setupLazyLoading();
+    applyFilter();
+    countEl.textContent = plates.length;
+    totalCountEl.textContent = plates.length;
+  }
+
+  function buildRegionChips(plates) {
+    const regionsUsed = new Set(plates.map(p => p.region).filter(Boolean));
+    const chipsContainer = document.querySelector('.filter-chips[data-group="region"]');
+    const html = ['<button class="chip active" data-filter="all">All</button>'];
+    for (const code of Object.keys(REGION_LABELS)) {
+      if (regionsUsed.has(code)) {
+        html.push(`<button class="chip" data-filter="${code}">${REGION_LABELS[code]}</button>`);
+      }
+    }
+    chipsContainer.innerHTML = html.join('');
+    chipsContainer.addEventListener('click', e => {
+      if (!e.target.classList.contains('chip')) return;
+      chipsContainer.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
+      e.target.classList.add('active');
+      currentRegion = e.target.dataset.filter;
+      applyFilter();
+    });
+  }
+
+  function applyFilter() {
+    const search = currentSearch;  // already normalized
+    let shown = 0;
+    document.querySelectorAll('.specimen').forEach(el => {
+      const regionOk = currentRegion === 'all' || el.dataset.region === currentRegion;
+      const searchOk = !search || (el.dataset.searchKey || '').includes(search);
+      const matches = regionOk && searchOk;
+      el.style.display = matches ? '' : 'none';
+      if (matches) shown++;
+    });
+    visibleCountEl.textContent = shown;
+
+    // Show or hide the empty-state message
+    const emptyMsg = document.getElementById('grid-empty');
+    if (shown === 0 && allPlates.length > 0) {
+      if (!emptyMsg) {
+        const el = document.createElement('div');
+        el.id = 'grid-empty';
+        el.className = 'grid-empty';
+        const searchLabel = currentSearch
+          ? ` matching "${escapeForHtml(document.getElementById('search-input').value)}"`
+          : '';
+        const regionLabel = currentRegion !== 'all'
+          ? ` in ${REGION_LABELS[currentRegion] || currentRegion}`
+          : '';
+        el.innerHTML = `
+          <p>No plates found${escapeForHtml(searchLabel)}${escapeForHtml(regionLabel)}.</p>
+          <button type="button" class="reset-search">Reset filters</button>
+        `;
+        el.querySelector('.reset-search').addEventListener('click', resetFilters);
+        grid.appendChild(el);
+      }
+    } else if (emptyMsg) {
+      emptyMsg.remove();
+    }
+  }
+
+  function resetFilters() {
+    // Clear region back to All
+    currentRegion = 'all';
+    document.querySelectorAll('.filter-chips[data-group="region"] .chip').forEach(c => {
+      c.classList.toggle('active', c.dataset.filter === 'all');
+    });
+    // Clear search
+    const input = document.getElementById('search-input');
+    input.value = '';
+    currentSearch = '';
+    document.getElementById('search-clear').classList.remove('visible');
+    applyFilter();
+    input.focus();
+  }
+
+  // Tiny HTML-escape helper, separate from the existing escapeHtml
+  // (which doesn't exist in this file — just being defensive)
+  function escapeForHtml(s) {
+    return String(s).replace(/[&<>"']/g, m => ({
+      '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
+    })[m]);
+  }
+
+  function buildCards(plates) {
+    grid.innerHTML = '';
+    plates.forEach(p => {
+      const el = document.createElement('article');
+      el.className = 'specimen';
+      el.dataset.slug = p.slug;
+      el.dataset.region = p.region || '';
+      // Precomputed search key: name + slug normalized once at render time
+      // so every keystroke is just an O(N) string-includes check, not N
+      // string-normalizations. Slug is included so technical searches like
+      // "tw" find "twa" even if the displayed name is "Trans World Airlines".
+      el.dataset.searchKey = normalize(p.name + ' ' + p.slug);
+
+      const frontSrc = `images/plates/${p.slug}.${p.front_ext}`;
+      const hasBack = !!p.back_ext;
+      const backSrc = hasBack ? `images/plates/${p.slug}_back.${p.back_ext}` : '';
+
+      el.innerHTML = `
+        <button class="zoom-btn" aria-label="Zoom in on ${p.name}" title="Zoom in">
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true">
+            <circle cx="7" cy="7" r="4.5"/>
+            <line x1="10.2" y1="10.2" x2="13.5" y2="13.5" stroke-linecap="round"/>
+            <line x1="5" y1="7" x2="9" y2="7" stroke-linecap="round"/>
+            <line x1="7" y1="5" x2="7" y2="9" stroke-linecap="round"/>
+          </svg>
+        </button>
+        <button type="button" class="plate" aria-pressed="false"
+                aria-label="${hasBack ? `Flip ${p.name} plate to see the other side` : p.name}"
+                ${hasBack ? '' : 'data-no-back="1"'}>
+          <div class="plate-face front">
+            <img class="plate-img" data-src="${frontSrc}"
+                 alt="${p.name} validation plate, front — embossed metal with airline name"
+                 loading="lazy" decoding="async" />
+          </div>
+          <div class="plate-face back" aria-hidden="true">
+            ${hasBack
+              ? `<img class="plate-img" data-src="${backSrc}" alt="" loading="lazy" decoding="async" />`
+              : `<div class="no-back">Back not yet scanned</div>`}
+          </div>
+        </button>
+        <div class="caption">
+          <div class="caption-name">${p.name}</div>
+          <div class="caption-years">${p.years || ''}</div>
+          ${hasBack ? '<div class="flip-hint" aria-hidden="true">Click to see the back</div>' : ''}
+        </div>
+      `;
+
+      const plateBtn = el.querySelector('.plate');
+      const frontFace = el.querySelector('.plate-face.front');
+      const backFace = el.querySelector('.plate-face.back');
+      const frontImg = frontFace.querySelector('img');
+      const backImg = backFace.querySelector('img');
+
+      // Track whether each side has been loaded — assign src only when needed.
+      // This is the main perf optimization: backs never load until first flip,
+      // and fronts only load when the card is about to enter the viewport.
+      frontImg._needsLoad = true;
+      if (backImg) backImg._needsLoad = true;
+
+      if (hasBack) {
+        plateBtn.addEventListener('click', () => {
+          const wasFlipped = plateBtn.classList.toggle('flipped-state');
+          plateBtn.setAttribute('aria-pressed', wasFlipped ? 'true' : 'false');
+          el.classList.toggle('flipped', wasFlipped);
+          frontFace.setAttribute('aria-hidden', wasFlipped ? 'true' : 'false');
+          backFace.setAttribute('aria-hidden', wasFlipped ? 'false' : 'true');
+          if (backImg) {
+            // Just-in-time load: assign src only when the user actually flips
+            if (backImg._needsLoad) {
+              backImg.src = backImg.dataset.src;
+              backImg._needsLoad = false;
+            }
+            backImg.alt = wasFlipped ? `${p.name} validation plate, back — protective sleeve` : '';
+          }
+        });
+      }
+
+      const zoomBtn = el.querySelector('.zoom-btn');
+      zoomBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const flipped = el.classList.contains('flipped');
+        openZoom(p, flipped ? 'back' : 'front', zoomBtn);
+      });
+
+      grid.appendChild(el);
+    });
+  }
+
+  function renderError(message) {
+    grid.innerHTML = `<div style="grid-column: 1 / -1; padding: 48px 0; text-align: center; color: var(--ink-soft); font-family: 'Fraunces', serif;">
+      <p style="font-size: 18px; font-style: italic; margin-bottom: 12px;">${message}</p>
+      <p style="font-size: 13px; font-family: 'JetBrains Mono', monospace; color: var(--ink-soft);">
+        Check the browser console for details. If you opened index.html directly, try running a local web server instead — fetch() doesn't work on file:// URLs.
+      </p>
+    </div>`;
+    countEl.textContent = '0';
+    if (totalCountEl) totalCountEl.textContent = '0';
+    if (visibleCountEl) visibleCountEl.textContent = '0';
+  }
+
+  /* ------------------------------------------------------------------
+   * SEARCH WIRING
+   * ------------------------------------------------------------------
+   * The input fires on every keystroke. We don't debounce because
+   * applyFilter() is cheap — it walks ~120 DOM elements and toggles
+   * display:none, which the browser handles fast. If the catalog grows
+   * to thousands of items, add a 100ms debounce here.
+   *
+   * Keyboard niceties:
+   *   - Escape inside the input clears it
+   *   - "/" anywhere on the page focuses the search (a common pattern)
+   *   - The clear button is tabindex="-1" so Tab stays linear past it
+   * ---------------------------------------------------------------- */
+  (function setupSearch() {
+    const input = document.getElementById('search-input');
+    const clearBtn = document.getElementById('search-clear');
+    if (!input) return;
+
+    function update() {
+      currentSearch = normalize(input.value);
+      clearBtn.classList.toggle('visible', input.value.length > 0);
+      applyFilter();
+    }
+
+    input.addEventListener('input', update);
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && input.value) {
+        input.value = '';
+        update();
+        e.preventDefault();
+      }
+    });
+
+    clearBtn.addEventListener('click', () => {
+      input.value = '';
+      update();
+      input.focus();
+    });
+
+    // Press "/" anywhere to focus search (common keyboard shortcut).
+    // Skip if the user is already typing in some other input.
+    document.addEventListener('keydown', (e) => {
+      if (e.key === '/' && !e.metaKey && !e.ctrlKey && !e.altKey) {
+        const active = document.activeElement;
+        if (active && (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA')) return;
+        e.preventDefault();
+        input.focus();
+        input.select();
+      }
+    });
+  })();
+
+  fetch(CSV_URL)
+    .then(resp => {
+      if (!resp.ok) throw new Error(`HTTP ${resp.status} loading ${CSV_URL}`);
+      return resp.text();
+    })
+    .then(text => {
+      const plates = parseCSV(text);
+      if (plates.length === 0) {
+        renderError('No plates found in plates.csv.');
+        return;
+      }
+      const missingRequired = plates.find(p => !p.slug || !p.name || !p.front_ext);
+      if (missingRequired) {
+        console.error('Row missing required slug/name/front_ext:', missingRequired);
+        renderError('Some rows in plates.csv are missing required fields (slug, name, front_ext).');
+        return;
+      }
+      renderPlates(plates);
+    })
+    .catch(err => {
+      console.error('Could not load plates.csv:', err);
+      renderError('Could not load plates.csv.');
+    });
+
+  /* ========== ZOOM MODAL — pan & zoom ========== */
+  const modal = document.getElementById('zoomModal');
+  const zoomImg = document.getElementById('zoomImg');
+  const zoomStage = document.getElementById('zoomStage');
+  const zoomCaption = document.getElementById('zoomCaption');
+  const zoomFrontBtn = document.getElementById('zoomFrontBtn');
+  const zoomBackBtn = document.getElementById('zoomBackBtn');
+
+  let currentPlate = null;
+  let currentSide = 'front';
+  let triggerEl = null;
+  let scale = 1;
+  let tx = 0, ty = 0;
+  let isDragging = false;
+  let dragStartX = 0, dragStartY = 0;
+  let dragStartTx = 0, dragStartTy = 0;
+
+  function imgSrc(plate, side) {
+    const ext = side === 'front' ? plate.front_ext : plate.back_ext;
+    const stem = side === 'front' ? plate.slug : `${plate.slug}_back`;
+    return `images/plates/${stem}.${ext}`;
+  }
+
+  function applyTransform() {
+    zoomImg.style.transform = `translate(${tx}px, ${ty}px) scale(${scale})`;
+  }
+
+  function resetTransform(animate = true) {
+    scale = 1; tx = 0; ty = 0;
+    zoomStage.classList.remove('zoomed');
+    zoomImg.style.transition = animate ? '' : 'none';
+    applyTransform();
+    if (!animate) {
+      void zoomImg.offsetWidth;
+      zoomImg.style.transition = '';
+    }
+  }
+
+  function openZoom(plate, side, trigger) {
+    currentPlate = plate;
+    currentSide = side;
+    triggerEl = trigger || null;
+    zoomImg.src = imgSrc(plate, side);
+    zoomImg.alt = `${plate.name} plate, ${side} — use scroll wheel or pinch to zoom, click and drag to pan`;
+    zoomCaption.innerHTML = `${plate.name}<span class="years">${plate.years || ''} · ${side}</span>`;
+    updateSideButtons();
+    resetTransform(false);
+    modal.classList.add('open');
+    document.body.classList.add('modal-open');
+    setTimeout(() => document.getElementById('zoomClose').focus(), 50);
+  }
+
+  function closeZoom() {
+    modal.classList.remove('open');
+    document.body.classList.remove('modal-open');
+    resetTransform(false);
+    if (triggerEl && typeof triggerEl.focus === 'function') {
+      triggerEl.focus();
+    }
+    triggerEl = null;
+  }
+
+  function updateSideButtons() {
+    zoomFrontBtn.classList.toggle('active', currentSide === 'front');
+    zoomBackBtn.classList.toggle('active', currentSide === 'back');
+    const hasBack = currentPlate && !!currentPlate.back_ext;
+    zoomBackBtn.disabled = !hasBack;
+    zoomBackBtn.style.opacity = hasBack ? '' : '0.4';
+    zoomBackBtn.style.cursor = hasBack ? '' : 'not-allowed';
+  }
+
+  function switchSide(side) {
+    if (!currentPlate || side === currentSide) return;
+    if (side === 'back' && !currentPlate.back_ext) return;
+    currentSide = side;
+    zoomImg.src = imgSrc(currentPlate, side);
+    zoomImg.alt = `${currentPlate.name} plate, ${side}`;
+    zoomCaption.innerHTML = `${currentPlate.name}<span class="years">${currentPlate.years || ''} · ${side}</span>`;
+    updateSideButtons();
+    resetTransform(false);
+  }
+
+  zoomFrontBtn.addEventListener('click', (e) => { e.stopPropagation(); switchSide('front'); });
+  zoomBackBtn.addEventListener('click', (e) => { e.stopPropagation(); switchSide('back'); });
+
+  modal.addEventListener('click', (e) => { if (e.target === modal) closeZoom(); });
+  document.getElementById('zoomClose').addEventListener('click', (e) => {
+    e.stopPropagation();
+    closeZoom();
+  });
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && modal.classList.contains('open')) closeZoom();
+    if (e.key === 'Tab' && modal.classList.contains('open')) {
+      const focusables = modal.querySelectorAll(
+        'button:not([disabled]), [tabindex]:not([tabindex="-1"])'
+      );
+      if (focusables.length === 0) return;
+      const first = focusables[0];
+      const last = focusables[focusables.length - 1];
+      if (e.shiftKey && document.activeElement === first) {
+        e.preventDefault(); last.focus();
+      } else if (!e.shiftKey && document.activeElement === last) {
+        e.preventDefault(); first.focus();
+      }
+    }
+  });
+
+  zoomStage.addEventListener('wheel', (e) => {
+    e.preventDefault();
+    const delta = -e.deltaY;
+    const zoomFactor = delta > 0 ? 1.12 : 1 / 1.12;
+    const newScale = Math.max(1, Math.min(6, scale * zoomFactor));
+    if (newScale === scale) return;
+    const rect = zoomStage.getBoundingClientRect();
+    const cx = e.clientX - rect.left - rect.width / 2;
+    const cy = e.clientY - rect.top - rect.height / 2;
+    const relX = (cx - tx) / scale;
+    const relY = (cy - ty) / scale;
+    scale = newScale;
+    tx = cx - relX * scale;
+    ty = cy - relY * scale;
+    if (scale <= 1.001) {
+      scale = 1; tx = 0; ty = 0;
+      zoomStage.classList.remove('zoomed');
+    } else {
+      zoomStage.classList.add('zoomed');
+    }
+    applyTransform();
+  }, { passive: false });
+
+  zoomStage.addEventListener('keydown', (e) => {
+    const panStep = 60;
+    const zoomStep = 1.2;
+    if (e.key === '+' || e.key === '=') {
+      e.preventDefault();
+      const newScale = Math.min(6, scale * zoomStep);
+      tx = tx * (newScale / scale);
+      ty = ty * (newScale / scale);
+      scale = newScale;
+      zoomStage.classList.add('zoomed');
+      applyTransform();
+    } else if (e.key === '-' || e.key === '_') {
+      e.preventDefault();
+      const newScale = Math.max(1, scale / zoomStep);
+      tx = tx * (newScale / scale);
+      ty = ty * (newScale / scale);
+      scale = newScale;
+      if (scale <= 1.001) { scale = 1; tx = 0; ty = 0; zoomStage.classList.remove('zoomed'); }
+      applyTransform();
+    } else if (e.key === '0') {
+      e.preventDefault();
+      resetTransform();
+    } else if (scale > 1) {
+      if (e.key === 'ArrowLeft')  { e.preventDefault(); tx += panStep; applyTransform(); }
+      if (e.key === 'ArrowRight') { e.preventDefault(); tx -= panStep; applyTransform(); }
+      if (e.key === 'ArrowUp')    { e.preventDefault(); ty += panStep; applyTransform(); }
+      if (e.key === 'ArrowDown')  { e.preventDefault(); ty -= panStep; applyTransform(); }
+    }
+  });
+
+  zoomStage.addEventListener('click', (e) => {
+    if (zoomStage.dataset.justDragged === '1') {
+      zoomStage.dataset.justDragged = '0';
+      return;
+    }
+    if (scale > 1) {
+      resetTransform();
+    } else {
+      const rect = zoomStage.getBoundingClientRect();
+      const cx = e.clientX - rect.left - rect.width / 2;
+      const cy = e.clientY - rect.top - rect.height / 2;
+      scale = 2.5;
+      tx = -cx * (scale - 1);
+      ty = -cy * (scale - 1);
+      zoomStage.classList.add('zoomed');
+      applyTransform();
+    }
+  });
+
+  zoomStage.addEventListener('mousedown', (e) => {
+    if (scale <= 1) return;
+    isDragging = true;
+    zoomStage.classList.add('dragging');
+    dragStartX = e.clientX;
+    dragStartY = e.clientY;
+    dragStartTx = tx;
+    dragStartTy = ty;
+    e.preventDefault();
+  });
+  window.addEventListener('mousemove', (e) => {
+    if (!isDragging) return;
+    const dx = e.clientX - dragStartX;
+    const dy = e.clientY - dragStartY;
+    tx = dragStartTx + dx;
+    ty = dragStartTy + dy;
+    if (Math.abs(dx) > 3 || Math.abs(dy) > 3) {
+      zoomStage.dataset.justDragged = '1';
+    }
+    applyTransform();
+  });
+  window.addEventListener('mouseup', () => {
+    if (!isDragging) return;
+    isDragging = false;
+    zoomStage.classList.remove('dragging');
+  });
+
+  let touchStartDist = 0;
+  let touchStartScale = 1;
+  let touchStartTx = 0, touchStartTy = 0;
+  let touchPanStartX = 0, touchPanStartY = 0;
+
+  function touchDistance(t1, t2) {
+    const dx = t1.clientX - t2.clientX;
+    const dy = t1.clientY - t2.clientY;
+    return Math.sqrt(dx * dx + dy * dy);
+  }
+
+  zoomStage.addEventListener('touchstart', (e) => {
+    if (e.touches.length === 2) {
+      touchStartDist = touchDistance(e.touches[0], e.touches[1]);
+      touchStartScale = scale;
+      touchStartTx = tx;
+      touchStartTy = ty;
+    } else if (e.touches.length === 1 && scale > 1) {
+      touchPanStartX = e.touches[0].clientX - tx;
+      touchPanStartY = e.touches[0].clientY - ty;
+    }
+  }, { passive: true });
+
+  zoomStage.addEventListener('touchmove', (e) => {
+    if (e.touches.length === 2) {
+      e.preventDefault();
+      const dist = touchDistance(e.touches[0], e.touches[1]);
+      const newScale = Math.max(1, Math.min(6, touchStartScale * (dist / touchStartDist)));
+      scale = newScale;
+      if (scale > 1.001) {
+        zoomStage.classList.add('zoomed');
+      } else {
+        scale = 1; tx = 0; ty = 0;
+        zoomStage.classList.remove('zoomed');
+      }
+      applyTransform();
+    } else if (e.touches.length === 1 && scale > 1) {
+      e.preventDefault();
+      tx = e.touches[0].clientX - touchPanStartX;
+      ty = e.touches[0].clientY - touchPanStartY;
+      applyTransform();
+    }
+  }, { passive: false });
+</script>
+
+</body>
+</html>
